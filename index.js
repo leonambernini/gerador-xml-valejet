@@ -31,6 +31,7 @@ let LAST_DATE = new Date();
 
 let CATEGORIES = {}
 let CATEGORIES_BY_EID = {}
+let BRANDS_BY_EID = {}
 let BRANDS = {}
 let PRODUCTS = [];
 var PRODUCTS_TEMP_JSON = {};
@@ -204,6 +205,13 @@ const GET_Brands = async () => {
         }else{
             haveBKP = false;
         }
+
+        var dataByFile = fs.readFileSync('brands_by_eid.json', {encoding:'utf8', flag:'r'});
+        if ( dataByFile && dataByFile != '{}' ){
+            BRANDS_BY_EID = JSON.parse(dataByFile);
+        }else{
+            haveBKP = false;
+        }
     } catch (error) {
         console.log(error);
         haveBKP = false;
@@ -218,8 +226,12 @@ const GET_Brands = async () => {
     const GetInfo = (data) => {
         for( var x = 0; x < data.objects.length; x++ ){
             var o = data.objects[x];
-
+            
             BRANDS[o.id] = o.nome;
+            
+            if( typeof o.id_externo == 'number' && o.id_externo > 0 ){
+                BRANDS_BY_EID[o.id_externo] = o.id;
+            }
         }
     }
     var data = await ExecGET_LI('brand');
@@ -234,6 +246,7 @@ const GET_Brands = async () => {
     }
 
     await createFileBkp('brands.json', JSON.stringify(BRANDS));
+    await createFileBkp('brands_by_eid.json', JSON.stringify(BRANDS_BY_EID));
 
 }
 const GET_Products = async () => {
@@ -310,10 +323,9 @@ const GET_Product = async (id) => {
             if( o.imagem_principal != null && typeof o.imagem_principal == 'object' && 'id' in o.imagem_principal && 'grande' in o.imagem_principal ){
                 image = o.imagem_principal.grande;
             }else if( o.imagens != null && typeof o.imagens == 'object' && o.imagens.length ){
-                    image = o.imagens[0];
+                image = o.imagens[0];
             }else{
                 await createFileBkp('help-not-image.json', JSON.stringify(o));
-                return false;
             }
             var dataPRICE = await ExecGET_LI('price', o.id);
             if( typeof dataPRICE == 'object' && dataPRICE != null  && 'id' in dataPRICE && 'cheio' in dataPRICE ){
@@ -326,10 +338,6 @@ const GET_Product = async (id) => {
                     salePrice = ( realPrice - ( realPrice * pctDesconto ) );
                     salePrice = `${salePrice.toFixed(2)} BRL`;
                 }
-
-                // if( dataPRICE['promocional'] != null ){
-                //     salePrice = `${parseFloat(dataPRICE['promocional']).toFixed(2)} BRL`;
-                // }
             }
 
             var brandId = null;
@@ -339,12 +347,21 @@ const GET_Product = async (id) => {
 
                 if( brandId in BRANDS ){
                     brand = BRANDS[brandId];
+                }else if( brandId in BRANDS_BY_EID && BRANDS_BY_EID[brandId] in BRANDS ){
+                    brand = BRANDS[BRANDS_BY_EID[brandId]];
+                }else{
+                    brand = null;
+                    await createFileBkp('erro.json', JSON.stringify(o) + ' ' +  JSON.stringify(BRANDS));    
                 }
+            }else{
+                await createFileBkp('erro.json', JSON.stringify(o));
             }
 
             var category = '';
             if( typeof o.categorias == 'object' && o.categorias.length ){
                 category = await prepareCategoryText(parseInt(o.categorias.pop().split('/').pop()).toString());
+            }else{
+                await createFileBkp('erro.json', JSON.stringify(o) + ' ' + JSON.stringify(CATEGORIES));
             }
 
             PRODUCTS_TEMP_JSON[o.id] = {
@@ -362,7 +379,6 @@ const GET_Product = async (id) => {
                 'g:gtin': o.gtin,
                 'g:online_only': 'y',
             }
-
             await createFileBkp('products_temp_import.json', JSON.stringify(PRODUCTS_TEMP_JSON));
 
             await CreateXMLProducts(true, PRODUCTS_TEMP_JSON[o.id]);
@@ -397,6 +413,7 @@ const CreateXMLProducts = async(temp=false, item=null) => {
         }else{
             channelItem = channel.ele('item')
         }
+        console.log(p)
         channelItem.ele('title').ele({'$': p['title']});
         channelItem.ele('link').ele({'$': p['link']});
         channelItem.ele('description').ele({'$': p['description']});
