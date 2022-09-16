@@ -306,9 +306,14 @@ const GET_Product = async (id) => {
                     descriptionSEO = dataSEO.description;
                 }
             }
-            // console.log(o.imagem_principal)
+            //console.log(o.imagem_principal)
             if( o.imagem_principal != null && typeof o.imagem_principal == 'object' && 'id' in o.imagem_principal && 'grande' in o.imagem_principal ){
                 image = o.imagem_principal.grande;
+            }else if( o.imagens != null && typeof o.imagens == 'object' && o.imagens.length ){
+                    image = o.imagens[0];
+            }else{
+                await createFileBkp('help-not-image.json', JSON.stringify(o));
+                return false;
             }
             var dataPRICE = await ExecGET_LI('price', o.id);
             if( typeof dataPRICE == 'object' && dataPRICE != null  && 'id' in dataPRICE && 'cheio' in dataPRICE ){
