@@ -298,6 +298,7 @@ const GET_Product = async (id) => {
             console.log(`CONSULTANDO DADOS DO PRODUTO ${data.id}`);
             var o = data;
 
+            console.log(o)
             var descriptionSEO = '';
             var image = '';
             var price = '';
@@ -323,7 +324,7 @@ const GET_Product = async (id) => {
             if( o.imagem_principal != null && typeof o.imagem_principal == 'object' && 'id' in o.imagem_principal && 'grande' in o.imagem_principal ){
                 image = o.imagem_principal.grande;
             }else if( o.imagens != null && typeof o.imagens == 'object' && o.imagens.length ){
-                image = o.imagens[0];
+                image = o.imagens[0]['grande'];
             }else{
                 await createFileBkp('help-not-image.json', JSON.stringify(o));
             }
@@ -413,7 +414,6 @@ const CreateXMLProducts = async(temp=false, item=null) => {
         }else{
             channelItem = channel.ele('item')
         }
-        console.log(p)
         channelItem.ele('title').ele({'$': p['title']});
         channelItem.ele('link').ele({'$': p['link']});
         channelItem.ele('description').ele({'$': p['description']});
